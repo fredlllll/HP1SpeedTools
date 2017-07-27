@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9E14D44B-9B27-41DE-9C60-302E0FA42C80}</ProjectGuid>
-    <RootNamespace>HP1SpeedTools</RootNamespace>
+    <ProjectGuid>{DB8AE3E5-8D30-443B-B067-579D90CB5617}</ProjectGuid>
+    <RootNamespace>SoftDrv</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -110,6 +110,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="SoftDrv.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="SoftDrv.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
