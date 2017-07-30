@@ -2,10 +2,8 @@
 #include <Windows.h>
 #include <iostream>
 #include <string>
-#include <PathCch.h>
 #include <map>
 #include <fstream>
-#include <sstream>
 
 using namespace std;
 
