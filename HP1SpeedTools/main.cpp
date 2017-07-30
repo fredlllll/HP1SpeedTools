@@ -3,11 +3,29 @@
 #include <Windows.h>
 #include <detours.h>
 #include <thread>
+#include <string>
+#include <sstream>
+
+using namespace std;
 
 class FPlane {
 public:
 	float x, y, z, w;
 };
+
+class _USoftwareRenderDevice;
+
+typedef void(__thiscall _USoftwareRenderDevice::*lockFuncPtr_t)(FPlane x, FPlane y, FPlane z, unsigned long a, unsigned char *b, int *c);
+struct pointerHolder {
+	lockFuncPtr_t fp;
+};
+
+pointerHolder originalPointerHolder;
+//pointer to detour function
+PVOID detourFP;
+PVOID originalFP;
+
+HMODULE hDLL;
 
 class _USoftwareRenderDevice {
 public:
@@ -17,19 +35,17 @@ public:
 	}
 
 	virtual void __thiscall Lock(FPlane x, FPlane y, FPlane z, unsigned long a, unsigned char *b, int *c) {
-		MessageBox(0, "yaaay lock called", "o boi", 0);
+		MessageBox(NULL, "yaaay lock called", "o boi", 0);
+
+		(this->*(originalPointerHolder.fp))(x, y, z, a, b, c);
 	}
 };
 
-typedef int(__thiscall _USoftwareRenderDevice::*execFuncPtr_t)(unsigned short const* something, void* outputDevice);
-struct pointerHolder {
-	execFuncPtr_t fp;
-};
-
-//pointer to detour function
-PVOID detourFP;
-
-HMODULE hDLL;
+string intToHex(int num) {
+	stringstream stream;
+	stream << std::hex << num;
+	return string(stream.str());
+}
 
 DWORD WINAPI attachWaiter(LPVOID param) {
 	//wait till SoftDrv.dll is loaded
@@ -41,7 +57,8 @@ DWORD WINAPI attachWaiter(LPVOID param) {
 		HMODULE moduleHandle = GetModuleHandle("SoftDrv.dll");
 		if (moduleHandle != NULL) {
 
-			FARPROC originalFP = GetProcAddress(moduleHandle, "?Lock@USoftwareRenderDevice@@UAEXVFPlane@@00KPAEPAH@Z"); //will it work? *drumroll* no clue yet lol
+			originalFP = GetProcAddress(moduleHandle, "?Lock@USoftwareRenderDevice@@UAEXVFPlane@@00KPAEPAH@Z"); //yeah that works
+			*((intptr_t*)(&originalPointerHolder)) = (intptr_t)originalFP;
 			DetourTransactionBegin();
 			DetourUpdateThread(GetCurrentThread());
 			DetourAttach(&(PVOID&)originalFP, detourFP);
@@ -51,6 +68,7 @@ DWORD WINAPI attachWaiter(LPVOID param) {
 			break;
 		}
 	}
+	MessageBox(0, "softdrv.dll loaded", "yay", 0);
 	return 0;
 }
 
@@ -70,7 +88,7 @@ void detach() {
 
 void setDetourFP() {
 	pointerHolder ph;
-	ph.fp = &_USoftwareRenderDevice::Exec;
+	ph.fp = &_USoftwareRenderDevice::Lock;
 	detourFP = (PVOID)*((intptr_t*)&ph); //convert to intptr_t* and dereference that (to get fp as int)
 }
 
