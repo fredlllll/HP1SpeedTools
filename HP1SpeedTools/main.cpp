@@ -3,10 +3,13 @@
 #include <Windows.h>
 #include <detours.h>
 #include <thread>
-#include <string>
-#include <sstream>
+
+#include "Util.h"
+#include "Hook.h"
 
 using namespace std;
+
+Hook lockHook;
 
 class FPlane {
 public:
@@ -34,18 +37,16 @@ public:
 		return 0;
 	}
 
-	virtual void __thiscall Lock(FPlane x, FPlane y, FPlane z, unsigned long a, unsigned char *b, int *c) {
-		MessageBox(NULL, "yaaay lock called", "o boi", 0);
+	DLLExport void __thiscall Lock(FPlane x, FPlane y, FPlane z, unsigned long a, unsigned char *b, int *c) {
+		std::chrono::milliseconds delay(100);
+		std::this_thread::sleep_for(delay);
+		//MessageBox(NULL, "yaaay lock called", "o boi", 0);
 
-		(this->*(originalPointerHolder.fp))(x, y, z, a, b, c);
+		//jumpToCodeLocation(lockHook.trampoline.codeLocation);
+		//(this->*(originalPointerHolder.fp))(x, y, z, a, b, c);
 	}
 };
 
-string intToHex(int num) {
-	stringstream stream;
-	stream << std::hex << num;
-	return string(stream.str());
-}
 
 DWORD WINAPI attachWaiter(LPVOID param) {
 	//wait till SoftDrv.dll is loaded
@@ -58,23 +59,25 @@ DWORD WINAPI attachWaiter(LPVOID param) {
 		if (moduleHandle != NULL) {
 
 			originalFP = GetProcAddress(moduleHandle, "?Lock@USoftwareRenderDevice@@UAEXVFPlane@@00KPAEPAH@Z"); //yeah that works
-			*((intptr_t*)(&originalPointerHolder)) = (intptr_t)originalFP;
+
+			lockHook.initialize((intptr_t)originalFP, 5, (intptr_t)detourFP);
+			/**((intptr_t*)(&originalPointerHolder)) = (intptr_t)originalFP;
 			DetourTransactionBegin();
 			DetourUpdateThread(GetCurrentThread());
 			DetourAttach(&(PVOID&)originalFP, detourFP);
 			if (DetourTransactionCommit() == NO_ERROR) {
 				OutputDebugString("send() detoured successfully");
-			}
+			}*/
 			break;
 		}
 	}
-	MessageBox(0, "softdrv.dll loaded", "yay", 0);
+	//MessageBox(0, "softdrv.dll loaded", "yay", 0);
 	return 0;
 }
 
 
 void attach() {
-	DisableThreadLibraryCalls(hDLL); //to prevent deadlock (i think, but cant hurt)
+	DisableThreadLibraryCalls(hDLL); //to prevent deadlock in dllmain when starting thread (i think, but cant hurt)
 	CreateThread(NULL, 0, attachWaiter, NULL, 0, NULL);
 }
 
