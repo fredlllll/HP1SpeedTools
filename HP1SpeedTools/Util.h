@@ -11,3 +11,9 @@ string intToHex(int num) {
 	stream << std::hex << num;
 	return string(stream.str());
 }
+
+string dblToString(double dbl) {
+	std::ostringstream strs;
+	strs << dbl;
+	return strs.str();
+}

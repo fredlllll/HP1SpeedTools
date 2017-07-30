@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <detours.h>
 #include <thread>
+#include <chrono>
 
 #include "Util.h"
 #include "Hook.h"
@@ -30,6 +31,12 @@ PVOID originalFP;
 
 HMODULE hDLL;
 
+
+chrono::time_point<chrono::steady_clock> lastLock;
+chrono::nanoseconds frameTime(1000000000 / 120);
+int cnt = 0;
+double actualFrameTime = -1;
+
 class _USoftwareRenderDevice {
 public:
 	int __thiscall Exec(unsigned short const * something, void* outputDevice)
@@ -38,10 +45,32 @@ public:
 	}
 
 	DLLExport void __thiscall Lock(FPlane x, FPlane y, FPlane z, unsigned long a, unsigned char *b, int *c) {
-		std::chrono::milliseconds delay(100);
-		std::this_thread::sleep_for(delay);
-		//MessageBox(NULL, "yaaay lock called", "o boi", 0);
+		auto now = chrono::high_resolution_clock::now();
+		auto diff = now - lastLock;
+		auto toWait = frameTime - diff;
+		if (toWait.count() > 0) {
+			this_thread::sleep_for(toWait);
+		}
 
+		now = chrono::high_resolution_clock::now();
+		diff = now - lastLock;
+
+		lastLock = std::chrono::high_resolution_clock::now();
+
+		if (actualFrameTime < 0) {
+			actualFrameTime = 1000000000.0 / diff.count();
+		}
+		else {
+			actualFrameTime = 0.9*actualFrameTime + 0.1*(1000000000 / diff.count());
+		}
+
+		cnt++;
+		if (cnt > 1000) {
+			cnt = 0;
+			MessageBox(0, dblToString(actualFrameTime).c_str(), "frametime", 0);
+		}
+        
+        //TODO: getting trampoline to work properly
 		//jumpToCodeLocation(lockHook.trampoline.codeLocation);
 		//(this->*(originalPointerHolder.fp))(x, y, z, a, b, c);
 	}
